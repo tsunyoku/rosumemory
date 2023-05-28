@@ -1,0 +1,58 @@
+name: Create release binary
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger the workflow on the creation of a tag starting with 'v'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - name: ubuntu-latest
+            clean_name: linux
+            target: x86_64-unknown-linux-gnu
+            file_extension: ""
+          - name: windows-latest
+            clean_name: windows
+            target: x86_64-pc-windows-msvc
+            file_extension: ".exe"
+          - name: macos-latest
+            clean_name: macos
+            target: x86_64-apple-darwin
+            file_extension: ""
+
+    runs-on: ${{ matrix.os.name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.os.target }}
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.os.target }}/release/rosumemory${{ matrix.os.file_extension }}
+          asset_name: rosumemory-${{ matrix.os.clean_name }}${{ matrix.os.file_extension }}
+          asset_content_type: application/octet-stream
