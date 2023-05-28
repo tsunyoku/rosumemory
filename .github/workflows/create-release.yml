@@ -6,6 +6,10 @@ on:
       - "v*" # Trigger the workflow on the creation of a tag starting with 'v'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
