@@ -37,7 +37,7 @@ jobs:
         run: cargo test --verbose
       - name: Clippy
         run: cargo clippy --verbose -- -D warnings
-      - name:
+      - name: Audit
         run: |
           rm -rf ~/.cargo/advisory-db
           cargo audit
