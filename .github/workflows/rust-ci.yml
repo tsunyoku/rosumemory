@@ -32,11 +32,11 @@ jobs:
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit || true
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
       - name: Test
-        run: cargo test --verbose
+        run: cargo test
       - name: Clippy
-        run: cargo clippy --verbose -- -D warnings
+        run: cargo clippy -- -D warnings
       - name: Audit
         run: |
           rm -rf ~/.cargo/advisory-db
