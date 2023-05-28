@@ -37,7 +37,14 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
+
+      - name: Disable auto-self-update
+        run: rustup set auto-self-update disable
+
+      - name: Rust cache
+        uses: Swantinem/rust-cache@v2
 
       - name: Build binary
         run: cargo build --release --target ${{ matrix.os.target }}

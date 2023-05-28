@@ -22,9 +22,15 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
+          components: rustfmt, clippy
+      - name: Disable auto-self-update
+        run: rustup set auto-self-update disable
+      - name: Rust cache
+        uses: Swantinem/rust-cache@v2
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: cargo install --locked cargo-audit || true
       - name: Build
         run: cargo build --verbose
       - name: Test
@@ -32,4 +38,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --verbose -- -D warnings
       - name:
-        run: cargo audit
+        run: |
+          rm -rf ~/.cargo/advisory-db
+          cargo audit
