@@ -12,6 +12,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  create_release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.release_version }}
+          release_name: rosumemory release v${{ github.event.inputs.release_version }}
+
   build:
     strategy:
       matrix:
@@ -29,6 +44,7 @@ jobs:
             target: x86_64-apple-darwin
             file_extension: ""
 
+    needs: create_release
     runs-on: ${{ matrix.os.name }}
 
     steps:
@@ -50,21 +66,12 @@ jobs:
       - name: Build binary
         run: cargo build --release --target ${{ matrix.os.target }}
 
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.event.inputs.release_version }}
-          release_name: rosumemory release v${{ github.event.inputs.release_version }}
-
       - name: Upload binary
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./target/${{ matrix.os.target }}/release/rosumemory${{ matrix.os.file_extension }}
           asset_name: rosumemory-${{ matrix.os.clean_name }}${{ matrix.os.file_extension }}
           asset_content_type: application/octet-stream
