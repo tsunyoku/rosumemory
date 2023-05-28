@@ -28,7 +28,7 @@ jobs:
       - name: Disable auto-self-update
         run: rustup set auto-self-update disable
       - name: Rust cache
-        uses: Swantinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit || true
       - name: Build
