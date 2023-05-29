@@ -13,6 +13,10 @@ fn main() {
                 Some(pid.into())
             }
             Err(ProcessError::NotFound(_)) => None,
+            Err(ProcessError::Unknown(e)) => {
+                eprintln!("unknown error {e}");
+                std::process::exit(1);
+            }
         };
 
         osu_songs_folder = match find_songs_folder() {
