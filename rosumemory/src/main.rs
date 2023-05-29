@@ -41,6 +41,19 @@ fn main() {
         };
     }
 
-    println!("osu! pid: {}", osu_pid.unwrap());
-    println!("osu! songs folder: {}", osu_songs_folder.unwrap());
+    let osu_pid = osu_pid.unwrap();
+    let osu_songs_folder = osu_songs_folder.unwrap();
+
+    println!("osu! pid: {}", osu_pid);
+    println!("osu! songs folder: {}", osu_songs_folder);
+
+    let base_addr = pattern::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
+        .expect("failed to find base address");
+
+    unsafe {
+        let beatmap_addr = base_addr.sub(0x1C);
+        let beatmap = Beatmap::from_memory(osu_pid, beatmap_addr).expect("failed to read beatmap");
+
+        println!("beatmap artist: {}", beatmap.artist);
+    }
 }
