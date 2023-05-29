@@ -192,6 +192,14 @@ mod platform {
 
 use platform::read_os_memory;
 
+pub fn enumerate_memory(
+    pid: Pid,
+    size: usize,
+    offset: Option<usize>,
+) -> Result<Vec<u8>, ReadMemoryError> {
+    todo!("cross platform memory querying")
+}
+
 #[derive(Error, Debug)]
 pub enum ReadMemoryError {
     #[error("failed to decode memory")]
