@@ -2,7 +2,7 @@ use std::str::FromStr;
 use sysinfo::Pid;
 use thiserror::Error;
 
-use super::read::find_pattern as read_find_pattern;
+use crate::memory::read::find_os_pattern;
 
 #[derive(PartialEq, Eq)]
 pub enum PatternByte {
@@ -41,6 +41,10 @@ pub struct Pattern {
 impl Pattern {
     fn new(bytes: Vec<PatternByte>) -> Self {
         Self { bytes }
+    }
+
+    pub fn bytes(&self) -> &[PatternByte] {
+        &self.bytes
     }
 
     pub fn len(&self) -> usize {
@@ -84,4 +88,10 @@ pub enum PatternScanError {
     NotFound,
     #[error("unknown err: {0}")]
     Unknown(String),
+}
+
+// TODO: move this to memory/pattern.rs?
+pub fn find_pattern(pid: Pid, pattern_string: &str) -> Result<*mut u8, PatternScanError> {
+    let pattern = Pattern::from_str(pattern_string).map_err(PatternScanError::Unknown)?;
+    find_os_pattern(pid, pattern)
 }

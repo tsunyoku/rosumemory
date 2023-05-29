@@ -1,11 +1,13 @@
+use std::io::{Read, Write};
+
+use rosumemory::api;
 use rosumemory_lib::{
-    memory::{read, MemoryMapping},
-    models::beatmap::Beatmap,
+    memory::{pattern, read::read_ptr},
     osu::{find_songs_folder, SongsError},
     process::{find_osu_process_id, ProcessError},
 };
 
-fn main() {
+async fn wrapped_main() -> anyhow::Result<()> {
     let mut osu_pid: Option<usize> = None;
     let mut osu_songs_folder: Option<String> = None;
 
@@ -19,8 +21,7 @@ fn main() {
             }
             Err(ProcessError::NotFound(_)) => None,
             Err(ProcessError::Unknown(e)) => {
-                eprintln!("unknown error {e}");
-                std::process::exit(1);
+                anyhow::bail!("unknown error {}", e);
             }
         };
 
@@ -31,12 +32,10 @@ fn main() {
             }
             Err(SongsError::OsuNotRunning) => None,
             Err(SongsError::NotFound) | Err(SongsError::DoesntExist) => {
-                eprintln!("failed to find songs folder, please specify manually");
-                std::process::exit(1);
+                anyhow::bail!("failed to find songs folder, please specify manually");
             }
             Err(e) => {
-                eprintln!("unknown error {e}");
-                std::process::exit(1);
+                anyhow::bail!("unknown error {}", e);
             }
         };
     }
@@ -47,13 +46,28 @@ fn main() {
     println!("osu! pid: {}", osu_pid);
     println!("osu! songs folder: {}", osu_songs_folder);
 
-    let base_addr = read::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
+    let base_addr = pattern::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
         .expect("failed to find base address");
 
-    unsafe {
-        let beatmap_addr = base_addr.sub(0x1C);
-        let beatmap = Beatmap::from_memory(osu_pid, beatmap_addr).expect("failed to read beatmap");
+    let _beatmap_ptr = unsafe {
+        read_ptr(osu_pid.into(), base_addr.sub(0xC) as usize).expect("failed to find beatmap ptr")
+    };
 
-        println!("beatmap artist: {}", beatmap.artist);
-    }
+    api::serve().await?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    wrapped_main().await.unwrap_or_else(|err| {
+        eprintln!("error: {}", err);
+
+        let mut stdin = std::io::stdin();
+        let mut stdout = std::io::stdout();
+
+        write!(stdout, "Press any key to continue...").unwrap();
+        stdout.flush().unwrap();
+
+        let _ = stdin.read(&mut [0u8]).unwrap();
+    })
 }
