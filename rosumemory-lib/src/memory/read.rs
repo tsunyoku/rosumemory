@@ -56,6 +56,7 @@ mod platform {
 
 #[cfg(target_os = "linux")]
 mod platform {
+    use super::ReadMemoryError;
     use libc::{c_void, iovec, pid_t, process_vm_readv};
 
     pub fn read_os_memory(
@@ -84,13 +85,14 @@ mod platform {
             )
         };
         if result == -1 {
-            match std::io::Error::last_os_err().raw_os_error() {
+            match std::io::Error::last_os_error().raw_os_error() {
                 Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                    let procmem = fs::File::open(format!("/proc/{}/mem", Into::<usize>::into(pid)))
-                        .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
+                    let procmem =
+                        std::fs::File::open(format!("/proc/{}/mem", Into::<usize>::into(pid)))
+                            .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
 
                     procmem
-                        .seek(io::SeekFrom::Start(address as u64))
+                        .seek(std::io::SeekFrom::Start(address as u64))
                         .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
 
                     procmem.read_exact(buffer);
@@ -113,6 +115,8 @@ mod platform {
     use mach::kern_return::{kern_return_t, KERN_SUCCESS};
     use mach::port::{mach_port_name_t, mach_port_t, MACH_PORT_NULL};
     use mach::vm_types::{mach_vm_address_t, mach_vm_size_t};
+
+    use super::ReadMemoryError;
 
     #[allow(non_camel_case_types)]
     type vm_map_t = mach_port_t;
@@ -145,7 +149,7 @@ mod platform {
                 &mut task,
             );
             if result != KERN_SUCCESS {
-                return Err(io::Error::last_os_error());
+                return Err(std::io::Error::last_os_error());
             }
         }
 
