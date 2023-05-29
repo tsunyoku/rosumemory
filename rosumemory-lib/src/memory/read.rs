@@ -1,8 +1,12 @@
+use std::str::FromStr;
+
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use sysinfo::Pid;
 use thiserror::Error;
 
+use super::pattern::Pattern;
+use super::pattern::PatternScanError;
 use super::MemoryMapping;
 
 #[cfg(windows)]
@@ -11,9 +15,24 @@ mod platform {
 
     use sysinfo::Pid;
     use winapi::{
-        shared::{basetsd, minwindef},
-        um::{memoryapi, processthreadsapi, winnt},
+        ctypes::c_void,
+        shared::{
+            basetsd,
+            minwindef::{self, HINSTANCE__},
+            ntdef::NULL,
+        },
+        um::{
+            libloaderapi::GetModuleHandleA,
+            memoryapi::{self, VirtualQuery, VirtualQueryEx},
+            processthreadsapi,
+            winnt::{
+                self, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_EXECUTE_READ,
+                PAGE_EXECUTE_READWRITE,
+            },
+        },
     };
+
+    use crate::memory::pattern::{Pattern, PatternScanError};
 
     use super::ReadMemoryError;
 
@@ -51,6 +70,64 @@ mod platform {
         }
 
         Ok(())
+    }
+
+    pub fn find_os_pattern(pid: Pid, pattern: Pattern) -> Result<*mut u8, PatternScanError> {
+        let process_handle = unsafe {
+            processthreadsapi::OpenProcess(
+                winnt::PROCESS_VM_READ,
+                0,
+                Into::<usize>::into(pid) as minwindef::DWORD,
+            )
+        };
+        if process_handle == (0 as RawHandle) {
+            return Err(PatternScanError::Unknown(
+                std::io::Error::last_os_error().to_string(),
+            ));
+        }
+
+        let end = 2147483647 as *mut c_void;
+
+        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
+
+        let mut page_start = std::ptr::null_mut::<c_void>();
+
+        loop {
+            let result = unsafe {
+                VirtualQueryEx(
+                    process_handle,
+                    page_start,
+                    &mut mbi as *mut MEMORY_BASIC_INFORMATION,
+                    std::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
+                )
+            };
+
+            if result == 0 || mbi.State != MEM_COMMIT || mbi.Protect != PAGE_EXECUTE_READWRITE {
+                continue;
+            }
+
+            let mut buffer = vec![0u8; mbi.RegionSize];
+            read_os_memory(pid, mbi.BaseAddress as usize, &mut buffer).map_err(|e| {
+                PatternScanError::Unknown(format!(
+                    "Failed to read memory at {:X}: {}",
+                    mbi.BaseAddress as usize, e
+                ))
+            })?;
+
+            if pattern == buffer {
+                return Ok(mbi.BaseAddress as *mut u8);
+            }
+
+            if page_start >= end {
+                break;
+            }
+
+            unsafe {
+                page_start = page_start.add(mbi.RegionSize);
+            }
+        }
+
+        Err(PatternScanError::NotFound)
     }
 }
 
@@ -109,6 +186,10 @@ mod platform {
         }
 
         Ok(())
+    }
+
+    pub fn find_os_pattern(pid: Pid, pattern: Pattern) -> Result<*mut u8, PatternScanError> {
+        todo!()
     }
 }
 
@@ -192,16 +273,18 @@ mod platform {
 
         Ok(())
     }
+
+    pub fn find_os_pattern(pid: Pid, pattern: Pattern) -> Result<*mut u8, PatternScanError> {
+        todo!()
+    }
 }
 
-use platform::read_os_memory;
+use platform::{find_os_pattern, read_os_memory};
 
-pub fn enumerate_memory(
-    pid: Pid,
-    size: usize,
-    offset: Option<usize>,
-) -> Result<Vec<u8>, ReadMemoryError> {
-    todo!("cross platform memory querying")
+// TODO: move this to memory/pattern.rs?
+pub fn find_pattern(pid: Pid, pattern_string: &str) -> Result<*mut u8, PatternScanError> {
+    let pattern = Pattern::from_str(pattern_string).map_err(PatternScanError::Unknown)?;
+    find_os_pattern(pid, pattern)
 }
 
 #[derive(Error, Debug)]

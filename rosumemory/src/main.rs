@@ -1,5 +1,5 @@
 use rosumemory_lib::{
-    memory::{pattern, MemoryMapping},
+    memory::{read, MemoryMapping},
     models::beatmap::Beatmap,
     osu::{find_songs_folder, SongsError},
     process::{find_osu_process_id, ProcessError},
@@ -47,7 +47,7 @@ fn main() {
     println!("osu! pid: {}", osu_pid);
     println!("osu! songs folder: {}", osu_songs_folder);
 
-    let base_addr = pattern::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
+    let base_addr = read::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
         .expect("failed to find base address");
 
     unsafe {

@@ -2,7 +2,7 @@ use std::str::FromStr;
 use sysinfo::Pid;
 use thiserror::Error;
 
-use super::read::enumerate_memory;
+use super::read::find_pattern as read_find_pattern;
 
 #[derive(PartialEq, Eq)]
 pub enum PatternByte {
@@ -84,29 +84,4 @@ pub enum PatternScanError {
     NotFound,
     #[error("unknown err: {0}")]
     Unknown(String),
-}
-
-pub fn find_pattern(pid: Pid, pattern_string: &str) -> Result<*mut u8, PatternScanError> {
-    let pattern = Pattern::from_str(pattern_string).map_err(PatternScanError::Unknown)?;
-
-    let mut offset = 0;
-
-    loop {
-        let mut memory_chunk = match enumerate_memory(pid, pattern.len(), Some(offset)) {
-            Ok(memory_chunk) => memory_chunk,
-            Err(e) => return Err(PatternScanError::Unknown(e.to_string())),
-        };
-
-        if pattern
-            == memory_chunk
-                .iter()
-                .take(pattern.len())
-                .copied()
-                .collect::<Vec<u8>>()
-        {
-            return Ok(memory_chunk.as_mut_ptr());
-        }
-
-        offset += pattern.len();
-    }
 }
