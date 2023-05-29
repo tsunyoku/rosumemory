@@ -58,6 +58,9 @@ mod platform {
 mod platform {
     use super::ReadMemoryError;
     use libc::{c_void, iovec, pid_t, process_vm_readv};
+    use std::io::Read;
+    use std::io::Seek;
+    use sysinfo::Pid;
 
     pub fn read_os_memory(
         pid: Pid,
@@ -115,6 +118,7 @@ mod platform {
     use mach::kern_return::{kern_return_t, KERN_SUCCESS};
     use mach::port::{mach_port_name_t, mach_port_t, MACH_PORT_NULL};
     use mach::vm_types::{mach_vm_address_t, mach_vm_size_t};
+    use sysinfo::Pid;
 
     use super::ReadMemoryError;
 
