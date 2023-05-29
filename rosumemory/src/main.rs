@@ -1,4 +1,9 @@
-use rosumemory_lib::{find_osu_process_id, find_songs_folder, ProcessError, SongsError};
+use rosumemory_lib::{
+    memory::{pattern, MemoryMapping},
+    models::beatmap::Beatmap,
+    osu::{find_songs_folder, SongsError},
+    process::{find_osu_process_id, ProcessError},
+};
 
 fn main() {
     let mut osu_pid: Option<usize> = None;
