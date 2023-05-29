@@ -2,7 +2,6 @@ use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
 use sysinfo::Pid;
 use thiserror::Error;
-use vmemory::ProcessMemory;
 
 use crate::process::ProcessError;
 
@@ -25,14 +24,7 @@ pub enum ReadMemoryError {
 }
 
 pub fn read_memory(pid: Pid, address: usize, size: usize) -> Result<Vec<u8>, ReadMemoryError> {
-    let process_memory = ProcessMemory::attach_process(Into::<usize>::into(pid) as u32)
-        .ok_or_else(|| ReadMemoryError::Unknown("failed to attach to process".to_string()))?;
-
-    let memory_region = process_memory
-        .read_memory(address, size, false)
-        .map_err(|e| ReadMemoryError::Unknown(format!("got error code from os: {}", e)))?;
-
-    Ok(memory_region)
+    todo!()
 }
 
 /// # Safety
@@ -42,14 +34,7 @@ pub unsafe fn structured_read_memory<T: MemoryMapping>(
     pid: Pid,
     address: usize,
 ) -> Result<T, ReadMemoryError> {
-    let process_memory = ProcessMemory::attach_process(Into::<usize>::into(pid) as u32)
-        .ok_or_else(|| ReadMemoryError::Unknown("failed to attach to process".to_string()))?;
-
-    let mut memory_region = process_memory
-        .read_memory(address, T::size(), false)
-        .map_err(|e| ReadMemoryError::Unknown(format!("got error code from os: {}", e)))?;
-
-    T::from_memory(pid.into(), memory_region.as_mut_ptr())
+    todo!()
 }
 
 const MAX_STRING_LENGTH: u32 = 4096;
