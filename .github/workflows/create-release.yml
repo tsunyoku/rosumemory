@@ -33,15 +33,15 @@ jobs:
         os:
           - name: ubuntu-latest
             clean_name: linux
-            target: x86_64-unknown-linux-gnu
+            target: i686-unknown-linux-gnu
             file_extension: ""
           - name: windows-latest
             clean_name: windows
-            target: x86_64-pc-windows-msvc
+            target: i686-pc-windows-msvc
             file_extension: ".exe"
           - name: macos-latest
             clean_name: macos
-            target: x86_64-apple-darwin
+            target: i686-apple-darwin
             file_extension: ""
 
     needs: create_release
