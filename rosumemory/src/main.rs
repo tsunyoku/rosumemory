@@ -46,8 +46,20 @@ async fn wrapped_main() -> anyhow::Result<()> {
     println!("osu! pid: {}", osu_pid);
     println!("osu! songs folder: {}", osu_songs_folder);
 
-    let base_addr = pattern::find_pattern(osu_pid.into(), "F8 01 74 04 83 65")
-        .expect("failed to find base address");
+    let mut base_addr: *mut u8 = std::ptr::null_mut();
+    while base_addr.is_null() {
+        base_addr = match pattern::find_pattern(osu_pid.into(), "F8 01 74 04 83 65") {
+            Ok(addr) => {
+                println!("found base address");
+                addr
+            }
+            Err(_) => {
+                eprintln!("failed to find base address, retrying...");
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                std::ptr::null_mut()
+            }
+        };
+    }
 
     let _beatmap_ptr = unsafe {
         read_ptr(osu_pid.into(), base_addr.sub(0xC) as usize).expect("failed to find beatmap ptr")
