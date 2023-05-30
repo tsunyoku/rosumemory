@@ -272,7 +272,7 @@ mod platform {
         if result == -1 {
             match std::io::Error::last_os_error().raw_os_error() {
                 Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                    let procmem =
+                    let mut procmem =
                         std::fs::File::open(format!("/proc/{}/mem", Into::<usize>::into(pid)))
                             .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
 
@@ -293,7 +293,7 @@ mod platform {
         Ok(())
     }
 
-    pub fn find_os_pattern(pid: Pid, pattern: Pattern) -> Result<*mut u8, PatternScanError> {
+    pub fn find_os_pattern(_pid: Pid, _pattern: Pattern) -> Result<*mut u8, PatternScanError> {
         todo!()
     }
 }
@@ -382,7 +382,7 @@ mod platform {
         Ok(())
     }
 
-    pub fn find_os_pattern(pid: Pid, pattern: Pattern) -> Result<*mut u8, PatternScanError> {
+    pub fn find_os_pattern(_pid: Pid, _pattern: Pattern) -> Result<*mut u8, PatternScanError> {
         todo!()
     }
 }
