@@ -392,10 +392,10 @@ pub enum ReadMemoryError {
     Unknown(String),
 }
 
-pub fn read_memory(pid: Pid, address: usize, size: usize) -> Result<Vec<u8>, ReadMemoryError> {
+pub fn read_memory(pid: Pid, address: *mut u8, size: usize) -> Result<Vec<u8>, ReadMemoryError> {
     let mut data = vec![0; size];
 
-    read_os_memory(pid, address, &mut data, size)?;
+    read_os_memory(pid, address as usize, &mut data, size)?;
 
     Ok(data)
 }
@@ -410,7 +410,7 @@ unsafe fn get_array_like_header(
     is_list: bool,
     base_address: *mut u8,
 ) -> Result<(u32, *mut u8), ReadMemoryError> {
-    let address = read_ptr(pid, base_address as usize)?;
+    let address = read_ptr(pid, base_address)?;
     if address.is_null() {
         return Err(ReadMemoryError::DecodeFailure(
             "array-like address is null".to_string(),
@@ -424,7 +424,7 @@ unsafe fn get_array_like_header(
     if is_list {
         number_of_elements_addr = address.add(3 * PTR_SIZE);
 
-        let number_of_elements_bytes = read_memory(pid, number_of_elements_addr as usize, 4)?;
+        let number_of_elements_bytes = read_memory(pid, number_of_elements_addr, 4)?;
         if number_of_elements_bytes.len() != 4 {
             return Err(ReadMemoryError::DecodeFailure(
                 "number of list element bytes is not 4".to_string(),
@@ -440,12 +440,12 @@ unsafe fn get_array_like_header(
                 )
             })?;
 
-        let internal_array = read_ptr(pid, address.add(PTR_SIZE) as usize)?;
+        let internal_array = read_ptr(pid, address.add(PTR_SIZE))?;
         first_element_ptr = internal_array.add(2 * PTR_SIZE);
     } else {
         number_of_elements_addr = address.add(PTR_SIZE);
 
-        let number_of_elements_bytes = read_memory(pid, number_of_elements_addr as usize, 4)?;
+        let number_of_elements_bytes = read_memory(pid, number_of_elements_addr, 4)?;
         if number_of_elements_bytes.len() != 4 {
             return Err(ReadMemoryError::DecodeFailure(
                 "number of array element bytes is not 4".to_string(),
@@ -469,21 +469,6 @@ unsafe fn get_array_like_header(
 
 const BYTES_PER_CHARACTER: u32 = 2;
 
-macro_rules! offset_type {
-    ($pid:expr, $ptr:expr, $offset:expr, $type:ty) => {
-        paste::paste!([<read_ $type>])
-        ($pid.into(), $ptr.add($offset) as usize)
-    };
-}
-pub(crate) use offset_type;
-
-macro_rules! offset_string {
-    ($pid:expr, $ptr:expr, $offset:expr) => {
-        read_string($pid.into(), $ptr.add($offset))
-    };
-}
-pub(crate) use offset_string;
-
 /// # Safety
 ///
 /// This function is unsafe because it calls a function which dereferences a raw pointer.
@@ -502,7 +487,7 @@ pub unsafe fn read_string(pid: Pid, string_ptr: *mut u8) -> Result<String, ReadM
     }
 
     let total_byte_count = BYTES_PER_CHARACTER * number_of_elements;
-    let bytes = read_memory(pid, first_element_ptr as usize, total_byte_count as usize)?;
+    let bytes = read_memory(pid, first_element_ptr, total_byte_count as usize)?;
     if bytes.len() != total_byte_count as usize {
         return Err(ReadMemoryError::DecodeFailure(
             "byte count mismatch on string".to_string(),
@@ -518,25 +503,34 @@ pub unsafe fn read_string(pid: Pid, string_ptr: *mut u8) -> Result<String, ReadM
         .map_err(|_| ReadMemoryError::DecodeFailure("failed to decode utf-16 string".to_string()))
 }
 
-pub fn read_u32(pid: Pid, address: usize) -> Result<u32, ReadMemoryError> {
-    let memory = read_memory(pid, address, 4)?;
+macro_rules! create_read_primitive {
+    ($type:ty) => {
+        paste::paste! {
+            pub fn [<read_ $type>](pid: Pid, address: *mut u8) -> Result<$type, ReadMemoryError> {
+                let memory = read_memory(pid, address, std::mem::size_of::<$type>())?;
 
-    memory
-        .as_slice()
-        .read_u32::<LittleEndian>()
-        .map_err(|_| ReadMemoryError::DecodeFailure("failed to decode u32".to_string()))
+                memory
+                    .as_slice()
+                    .[<read_ $type>]::<LittleEndian>()
+                    .map_err(|_| ReadMemoryError::DecodeFailure(concat!("failed to decode ", stringify!($type)).to_string()))
+            }
+        }
+    };
 }
 
-pub fn read_ptr(pid: Pid, address: usize) -> Result<*mut u8, ReadMemoryError> {
+create_read_primitive!(u32);
+create_read_primitive!(i32);
+create_read_primitive!(f32);
+
+pub fn read_ptr(pid: Pid, address: *mut u8) -> Result<*mut u8, ReadMemoryError> {
     let ptr = read_u32(pid, address)?;
     Ok(ptr as *mut u8)
 }
 
-pub fn read_f32(pid: Pid, address: usize) -> Result<f32, ReadMemoryError> {
-    let memory = read_memory(pid, address, 4)?;
-
-    memory
-        .as_slice()
-        .read_f32::<LittleEndian>()
-        .map_err(|_| ReadMemoryError::DecodeFailure("failed to decode f32".to_string()))
+macro_rules! read_type_at_offset {
+    ($pid:expr, $ptr:expr, $offset:expr, $type:ty) => {
+        paste::paste!([<read_ $type:lower>])
+        ($pid.into(), $ptr.add($offset))
+    };
 }
+pub(crate) use read_type_at_offset;

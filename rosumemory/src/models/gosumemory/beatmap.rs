@@ -8,10 +8,20 @@ pub struct GosumemoryBeatmapMetadata {
     pub title: String,
     #[serde(rename = "titleOriginal")]
     pub title_original: String,
-    // TODO: add remaining fields
+    pub mapper: String,
+    pub difficulty: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct GosumemoryBeatmap {
+    // TODO: time
+    pub id: i32,
+    pub set: i32,
+    pub md5: String,
+    #[serde(rename = "rankedStatus")]
+    pub ranked_status: i32,
     pub metadata: GosumemoryBeatmapMetadata,
+    // TODO: stats
+    // TODO: path
+    // TODO: wtf does `json:"-"` mean? (do i need HitObjectStats and BeatmapString?)
 }

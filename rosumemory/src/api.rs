@@ -44,11 +44,17 @@ fn build_gosumemory_response(shared_context: SharedContext) -> anyhow::Result<Op
     Ok(Some(Gosumemory {
         menu: GosumemoryMenu {
             bm: GosumemoryBeatmap {
+                id: beatmap.map_id,
+                set: beatmap.set_id,
+                md5: beatmap.md5,
+                ranked_status: beatmap.ranked_status,
                 metadata: GosumemoryBeatmapMetadata {
                     artist: beatmap.artist_romanised,
                     artist_original: beatmap.artist,
                     title: beatmap.title_romanised,
                     title_original: beatmap.title,
+                    mapper: beatmap.creator,
+                    difficulty: beatmap.difficulty,
                 },
             },
         },

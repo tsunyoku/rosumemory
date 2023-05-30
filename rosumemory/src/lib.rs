@@ -65,7 +65,7 @@ pub async fn ensure_osu() -> anyhow::Result<Context> {
     }
 
     let _beatmap_ptr = unsafe {
-        read_ptr(osu_pid.into(), base_addr.sub(0xC) as usize).expect("failed to find beatmap ptr")
+        read_ptr(osu_pid.into(), base_addr.sub(0xC)).expect("failed to find beatmap ptr")
     };
 
     Ok(Context::new(
