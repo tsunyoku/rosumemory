@@ -472,14 +472,14 @@ const BYTES_PER_CHARACTER: u32 = 2;
 macro_rules! offset_type {
     ($pid:expr, $ptr:expr, $offset:expr, $type:ty) => {
         paste::paste!([<read_ $type>])
-        ($pid.into(), $ptr.add($offset) as usize)?
+        ($pid.into(), $ptr.add($offset) as usize)
     };
 }
 pub(crate) use offset_type;
 
 macro_rules! offset_string {
     ($pid:expr, $ptr:expr, $offset:expr) => {
-        read_string($pid.into(), $ptr.add($offset))?
+        read_string($pid.into(), $ptr.add($offset))
     };
 }
 pub(crate) use offset_string;
