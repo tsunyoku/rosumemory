@@ -235,6 +235,9 @@ mod platform {
 #[cfg(target_os = "linux")]
 mod platform {
     use super::ReadMemoryError;
+    use crate::memory::pattern::Pattern;
+    use crate::memory::pattern::PatternScanError;
+
     use libc::{c_void, iovec, pid_t, process_vm_readv};
     use std::io::Read;
     use std::io::Seek;
@@ -304,6 +307,8 @@ mod platform {
     use sysinfo::Pid;
 
     use super::ReadMemoryError;
+    use crate::memory::pattern::Pattern;
+    use crate::memory::pattern::PatternScanError;
 
     #[allow(non_camel_case_types)]
     type vm_map_t = mach_port_t;
