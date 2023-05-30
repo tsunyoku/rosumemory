@@ -280,7 +280,9 @@ mod platform {
                         .seek(std::io::SeekFrom::Start(address as u64))
                         .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
 
-                    procmem.read_exact(buffer);
+                    procmem
+                        .read_exact(buffer)
+                        .map_err(|e| ReadMemoryError::Unknown(e.to_string()))?;
                 }
                 _ => {
                     return Err(ReadMemoryError::Unknown(
