@@ -33,18 +33,15 @@ pub async fn serve(shared_context: SharedContext) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn build_gosumemory_response(shared_context: SharedContext) -> Option<Gosumemory> {
+fn build_gosumemory_response(shared_context: SharedContext) -> anyhow::Result<Option<Gosumemory>> {
     let state = shared_context.shared.state.lock().unwrap();
     if !state.ready {
-        return None;
+        return Ok(None);
     }
 
-    let beatmap = unsafe {
-        Beatmap::from_ptr(state.osu_pid, state.beatmap_ptr as *mut u8)
-            .expect("failed to find beatmap in memory")
-    };
+    let beatmap = unsafe { Beatmap::from_ptr(state.osu_pid, state.beatmap_ptr as *mut u8)? };
 
-    Some(Gosumemory {
+    Ok(Some(Gosumemory {
         menu: GosumemoryMenu {
             bm: GosumemoryBeatmap {
                 metadata: GosumemoryBeatmapMetadata {
@@ -55,7 +52,7 @@ fn build_gosumemory_response(shared_context: SharedContext) -> Option<Gosumemory
                 },
             },
         },
-    })
+    }))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,10 +72,13 @@ async fn json_route(
     let response = build_gosumemory_response(shared_context);
 
     match response {
-        Some(response) => Ok(Json(response)),
-        None => Err(Json(ErrorResponse::new(
-            "osu! is not fully loaded".to_string(),
-        ))),
+        Ok(response) => match response {
+            Some(response) => Ok(Json(response)),
+            None => Err(Json(ErrorResponse::new(
+                "osu! is not fully loaded".to_string(),
+            ))),
+        },
+        Err(error) => Err(Json(ErrorResponse::new(error.to_string()))),
     }
 }
 
@@ -95,15 +95,15 @@ async fn ws_route(
             }
 
             if ready {
-                let response = build_gosumemory_response(shared_context.clone());
-
-                // TODO: does gosu use text or binary?
-                if socket
-                    .send(Message::Text(serde_json::to_string(&response).unwrap()))
-                    .await
-                    .is_err()
-                {
-                    break;
+                if let Ok(Some(response)) = build_gosumemory_response(shared_context.clone()) {
+                    // TODO: does gosumemory send text or binary?
+                    if socket
+                        .send(Message::Text(serde_json::to_string(&response).unwrap()))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
                 }
             }
 
