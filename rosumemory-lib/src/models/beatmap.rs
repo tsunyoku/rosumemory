@@ -22,10 +22,10 @@ impl Beatmap {
     pub unsafe fn from_ptr(pid: usize, ptr: *mut u8) -> Result<Self, ReadMemoryError> {
         let deref_ptr = read::read_ptr(pid.into(), ptr as usize)?;
 
-        let artist = offset_string!(pid, deref_ptr, 0x1C);
         let artist_romanised = offset_string!(pid, deref_ptr, 0x18);
-        let title = offset_string!(pid, deref_ptr, 0x24);
-        let title_romanised = offset_string!(pid, deref_ptr, 0x28);
+        let artist = offset_string!(pid, deref_ptr, 0x1C);
+        let title_romanised = offset_string!(pid, deref_ptr, 0x24);
+        let title = offset_string!(pid, deref_ptr, 0x28);
         let ar = offset_type!(pid, deref_ptr, 0x2C, f32);
         let cs = offset_type!(pid, deref_ptr, 0x30, f32);
         let hp = offset_type!(pid, deref_ptr, 0x34, f32);
@@ -34,8 +34,8 @@ impl Beatmap {
         Ok(Self {
             artist,
             artist_romanised,
-            title_romanised: title,
-            title: title_romanised,
+            title_romanised,
+            title,
             ar,
             cs,
             hp,
