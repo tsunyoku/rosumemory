@@ -534,10 +534,35 @@ pub fn read_ptr(pid: Pid, address: *mut u8) -> Result<*mut u8, ReadMemoryError> 
     Ok(ptr as *mut u8)
 }
 
+macro_rules! read_type {
+    ($pid:expr, $ptr:expr, $type:ty) => {
+        paste::paste!([<read_ $type:lower>])
+        ($pid.into(), $ptr)
+    };
+}
+pub(crate) use read_type;
+
 macro_rules! read_type_at_offset {
     ($pid:expr, $ptr:expr, $offset:expr, $type:ty) => {
-        paste::paste!([<read_ $type:lower>])
-        ($pid.into(), $ptr.add($offset))
+        if $offset >= 0 {
+            paste::paste!([<read_ $type:lower>])
+            ($pid.into(), $ptr.add($offset))
+        } else {
+            paste::paste!([<read_ $type:lower>])
+            ($pid.into(), $ptr.sub(-($offset as i16) as usize))
+        }
     };
 }
 pub(crate) use read_type_at_offset;
+
+// TODO: combine read_type and read_ptr macros?
+macro_rules! read_ptr_at_offset {
+    ($pid:expr, $ptr:expr, $offset:expr) => {
+        if $offset >= 0 {
+            read_ptr($pid.into(), $ptr.add($offset as usize))
+        } else {
+            read_ptr($pid.into(), $ptr.sub(-($offset as i16) as usize))
+        }
+    };
+}
+pub(crate) use read_ptr_at_offset;

@@ -7,6 +7,8 @@ pub struct Context {
     pub osu_songs_folder: String,
     pub base_address: usize,
     pub beatmap_ptr: usize,
+    pub play_time_addr: usize,
+    pub menu_mods_addr: usize,
 }
 
 impl Context {
@@ -15,6 +17,8 @@ impl Context {
         osu_songs_folder: String,
         base_address: usize,
         beatmap_ptr: usize,
+        play_time_addr: usize,
+        menu_mods_addr: usize,
     ) -> Self {
         Self {
             ready: true,
@@ -22,6 +26,8 @@ impl Context {
             osu_songs_folder,
             base_address,
             beatmap_ptr,
+            play_time_addr,
+            menu_mods_addr,
         }
     }
 
@@ -31,6 +37,8 @@ impl Context {
         self.osu_songs_folder = String::new();
         self.base_address = 0;
         self.beatmap_ptr = 0;
+        self.play_time_addr = 0;
+        self.menu_mods_addr = 0;
     }
 }
 

@@ -1,4 +1,5 @@
-use std::net::SocketAddr;
+use std::str::FromStr;
+use std::{net::SocketAddr, path::Path};
 
 use axum::{
     extract::{ws::Message, State, WebSocketUpgrade},
@@ -6,13 +7,17 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use rosumemory_lib::models::beatmap::Beatmap;
+use rosu_pp::{Beatmap, BeatmapExt, GameMode};
+use rosumemory_lib::osu;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     context::SharedContext,
     models::gosumemory::{
-        beatmap::{GosumemoryBeatmap, GosumemoryBeatmapMetadata},
+        beatmap::{
+            GosumemoryBeatmap, GosumemoryBeatmapMetadata, GosumemoryBeatmapStats,
+            GosumemoryBeatmapTime,
+        },
         Gosumemory, GosumemoryMenu,
     },
 };
@@ -39,11 +44,41 @@ fn build_gosumemory_response(shared_context: SharedContext) -> anyhow::Result<Op
         return Ok(None);
     }
 
-    let beatmap = unsafe { Beatmap::from_ptr(state.osu_pid, state.beatmap_ptr as *mut u8)? };
+    let beatmap = unsafe { osu::beatmap::from_ptr(state.osu_pid, state.beatmap_ptr as *mut u8)? };
+    let play_time =
+        unsafe { osu::play_time::from_ptr(state.osu_pid, state.play_time_addr as *mut u8)? };
+    let game_mode =
+        unsafe { osu::game_mode::from_ptr(state.osu_pid, state.base_address as *mut u8)? };
+    let menu_mods =
+        unsafe { osu::menu_mods::from_ptr(state.osu_pid, state.menu_mods_addr as *mut u8)? };
+
+    let osu_file_path = Path::new(&state.osu_songs_folder)
+        .join(&beatmap.folder)
+        .join(&beatmap.osu_file_name);
+
+    // TODO: allow/force akatsuki-pp-rs for rx/ap?
+    let map = Beatmap::from_path(osu_file_path).expect("failed to read beatmap file");
+    let calc_result = map
+        .pp()
+        .mode(match game_mode {
+            0 => GameMode::Osu,
+            1 => GameMode::Taiko,
+            2 => GameMode::Catch,
+            3 => GameMode::Mania,
+            _ => unreachable!(),
+        })
+        .mods(menu_mods)
+        .calculate();
+
+    let max_combo = calc_result.difficulty_attributes().max_combo() as i32;
+
+    // TODO: this is clunky af
+    let rounded_sr = f32::from_str(&format!("{:.2}", calc_result.stars()))?;
 
     Ok(Some(Gosumemory {
         menu: GosumemoryMenu {
             bm: GosumemoryBeatmap {
+                time: GosumemoryBeatmapTime { play_time },
                 id: beatmap.map_id,
                 set: beatmap.set_id,
                 md5: beatmap.md5,
@@ -55,6 +90,14 @@ fn build_gosumemory_response(shared_context: SharedContext) -> anyhow::Result<Op
                     title_original: beatmap.title,
                     mapper: beatmap.creator,
                     difficulty: beatmap.difficulty,
+                },
+                stats: GosumemoryBeatmapStats {
+                    max_combo,
+                    memory_ar: beatmap.ar,
+                    memory_cs: beatmap.cs,
+                    memory_od: beatmap.od,
+                    memory_hp: beatmap.hp,
+                    full_sr: rounded_sr,
                 },
             },
         },

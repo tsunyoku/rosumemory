@@ -64,14 +64,50 @@ pub async fn ensure_osu() -> anyhow::Result<Context> {
         };
     }
 
-    let _beatmap_ptr = unsafe {
+    let beatmap_ptr = unsafe {
         read_ptr(osu_pid.into(), base_addr.sub(0xC)).expect("failed to find beatmap ptr")
     };
+
+    let mut play_time_addr: *mut u8 = std::ptr::null_mut();
+    while play_time_addr.is_null() {
+        play_time_addr =
+            match pattern::find_pattern(osu_pid.into(), "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04") {
+                Ok(addr) => {
+                    println!("found play time address");
+                    addr
+                }
+                Err(_) => {
+                    eprintln!("failed to find play time address, retrying...");
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    std::ptr::null_mut()
+                }
+            }
+    }
+
+    let mut menu_mods: *mut u8 = std::ptr::null_mut();
+    while menu_mods.is_null() {
+        menu_mods = match pattern::find_pattern(
+            osu_pid.into(),
+            "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00",
+        ) {
+            Ok(addr) => {
+                println!("found menu mods address");
+                addr
+            }
+            Err(_) => {
+                eprintln!("failed to find menu mods address, retrying...");
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                std::ptr::null_mut()
+            }
+        }
+    }
 
     Ok(Context::new(
         osu_pid,
         osu_songs_folder,
         base_addr as usize,
-        _beatmap_ptr as usize,
+        beatmap_ptr as usize,
+        play_time_addr as usize,
+        menu_mods as usize,
     ))
 }

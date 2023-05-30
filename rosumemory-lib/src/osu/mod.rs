@@ -1,3 +1,8 @@
+pub mod beatmap;
+pub mod game_mode;
+pub mod menu_mods;
+pub mod play_time;
+
 use std::path::PathBuf;
 
 use thiserror::Error;
